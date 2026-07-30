@@ -2,23 +2,19 @@
 
 搜索中文经济论坛（经管之家等）获取实证论文中遇到问题时的实操方案。
 
-## 适用场景
-- Stata / 计量经济学问题排查
-- 平行趋势检验失败
-- DID 结果不显著或符号相反
-- 想要查看中文论坛上的类似案例和讨论
+## 架构
 
-## 使用方式
+技能分为两层：
+- **Read（通用层）** — 任何 AI Agent（Claude Code、Kimi Code、Pi、Codex、Hermes）都能用，只需 HTTP 客户端和登录 cookies
+- **Search（Agent 依赖层）** — 各 Agent 使用自身能力搜索（Camofox + 百度 / 内置搜索 / 用户手动提供 URL）
 
-### 首次安装
+## 首次安装
 Agent 首次使用本技能时，**必须主动引导用户完成凭据配置**：
-1. 运行 `./scripts/camofox-manager.sh status` 检查 Camofox
-2. 引导用户经管之家论坛 cookies：
-   - 浏览器打开 https://bbs.pinggu.org/ 并登录
-   - F12 → Application → Cookies
-   - 找到 `Z9M6_79fc_auth` 和 `Z9M6_79fc_saltkey`
-   - 写入 `~/.hermes/credentials/bbs-pinggu-cookies.txt`
-3. 验证凭据：读取一个帖子确认能获取正文
+1. 登录 https://bbs.pinggu.org
+2. F12 → Application → Cookies
+3. 找到 `Z9M6_79fc_auth` 和 `Z9M6_79fc_saltkey`
+4. 写入凭据文件（`~/.hermes/credentials/bbs-pinggu-cookies.txt`）
+5. 验证凭据：`python3 scripts/search-bbs-pinggu.py read <帖子URL>`
 
 ### 文件结构
 ```
