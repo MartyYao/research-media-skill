@@ -1,5 +1,6 @@
 ---
 name: research-media-skill
+version: 0.1.1
 description: 搜索经管之家(bbs.pinggu.org)等中文论坛获取实证实操方案。触发：Stata/计量/平行趋势/DID/回归问题。
 ---
 
@@ -10,14 +11,14 @@ description: 搜索经管之家(bbs.pinggu.org)等中文论坛获取实证实操
 本技能让 AI Agent 能够搜索中文经济论坛（如经管之家 bbs.pinggu.org）并读取帖子正文。
 
 技能分为两个独立能力：
-- **Search（搜索帖子）** — Agent 依赖层，各 Agent 用自身能力完成
-- **Read（读取正文）** — 通用层，任何有 HTTP 能力的 Agent 均可使用
+- **Read（读取正文）** — 通用层，任何有 HTTP 能力的 Agent 均可使用。**内置自动 cookie 续期**（Hermes Agent 下）。
+- **Search（搜索帖子）** — Agent 依赖层，各 Agent 用自身能力完成。
 
 ---
 
 ## Read（通用层）：读取经管之家帖子正文
 
-**任何 Agent 都能用**，只需一个 HTTP 客户端和登录 cookies。
+**任何 Agent 都能用**，只需一个 HTTP 客户端和登录 cookies。Hermes Agent 下 cookies 过期时会自动续期。
 
 ### 前置要求
 
@@ -30,21 +31,38 @@ description: 搜索经管之家(bbs.pinggu.org)等中文论坛获取实证实操
 4. 将它们的值按 `Name=Value` 格式写入凭据文件（每行一个，`#` 开头为注释）
 5. 设置文件权限为 `chmod 600`
 
-凭据文件路径：各 Agent 按自身约定存储，推荐 `~/.hermes/credentials/bbs-pinggu-cookies.txt`（Hermes）或自定义位置。
+凭据文件路径：推荐 `~/.hermes/credentials/bbs-pinggu-cookies.txt`。
+
+### 自动 cookie 续期（Hermes Agent 专用）
+
+借助 Hermes 的 Camofox 浏览器，脚本可在 cookies 过期时自动登录并重新提取：
+
+1. 在 `~/.hermes/credentials/bbs-pinggu-login.txt` 中保存用户名和密码
+   ```
+   username=你的论坛用户名
+   password=你的论坛密码
+   ```
+2. Agent 调用 `search-bbs-pinggu.py read <URL>` 时会自动：
+   - 检查 cookies 是否有效 → 有效则直接读帖
+   - 无效 → 启动 Camofox → 打开登录页 → 自动填凭据 → 登录 → 提取新 cookies → 写回文件 → 用新 cookies 读帖
+3. 全程自动，无需用户干预
+
+**其他 Agent**：如果无法自动续期，Agent 应提示用户手动重新导出 cookies。
 
 ### 读取命令
 
+推荐使用辅助脚本（自动处理 cookie 检查、续期、解码、内容提取）：
+```bash
+python3 scripts/search-bbs-pinggu.py read "https://bbs.pinggu.org/thread-XXXXXXX-1-1.html"
+```
+
+或手动 curl（需自行确保 cookies 有效）：
 ```bash
 curl -sL --max-time 20 \
   -A "Mozilla/5.0" \
-  --cookie <凭据文件路径> \
+  --cookie ~/.hermes/credentials/bbs-pinggu-cookies.txt \
   "https://bbs.pinggu.org/thread-XXXXXXX-1-1.html" \
   | iconv -f gbk -t utf-8
-```
-
-或使用辅助脚本（需 Python 环境）：
-```bash
-python3 scripts/search-bbs-pinggu.py read "https://bbs.pinggu.org/thread-XXXXXXX-1-1.html"
 ```
 
 ### 内容提取
@@ -53,7 +71,7 @@ python3 scripts/search-bbs-pinggu.py read "https://bbs.pinggu.org/thread-XXXXXXX
 
 ### 注意事项
 - 页面编码为 GBK，需转 UTF-8（`iconv -f gbk -t utf-8`）
-- Cookies 有时效，失效后提示用户重新导出
+- Cookies 有时效——Hermes 下自动续期；其他 Agent 提示用户重新导出
 - 不要伪造帖子内容——读取失败时如实报告
 
 ---
@@ -111,12 +129,13 @@ research-media-skill/
 ├── CLAUDE.md                      ← Claude Code 专用指引
 └── scripts/
     ├── camofox-manager.sh         ← Camofox 浏览器管理（Hermes 专用）
-    └── search-bbs-pinggu.py       ← 帖子读取辅助脚本（通用）
+    ├── search-bbs-pinggu.py       ← 帖子读取+自动 cookie 续期（通用）
+    └── refresh-bbs-cookies.py     ← cookie 续期脚本（被 search-bbs-pinggu.py 调用）
 ```
 
 ---
 
 ## 安全说明
 - 凭据值不写入技能文件。Agent 引导用户自行填写
-- 凭据文件权限 `chmod 600`
+- 凭据文件权限 `chmod 600`。登录凭据与 cookie 文件分离存储
 - 不伪造内容。读取失败时如实报告
