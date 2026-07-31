@@ -35,17 +35,13 @@ description: 搜索经管之家(bbs.pinggu.org)等中文论坛获取实证实操
 
 ### 自动 cookie 续期（Hermes Agent 专用）
 
-借助 Hermes 的 Camofox 浏览器，脚本可在 cookies 过期时自动登录并重新提取：
+**原理**：用户在 Camofox 浏览器里登录一次经管之家后，Firefox 会把全部 cookies（包括 HttpOnly 的 `Z9M6_79fc_auth`）存到 profile 的 `cookies.sqlite`。脚本从中直接提取，无需登录表单、无需验证码。
 
-1. 在 `~/.hermes/credentials/bbs-pinggu-login.txt` 中保存用户名和密码
-   ```
-   username=你的论坛用户名
-   password=你的论坛密码
-   ```
+1. **用户一次性配置**：在 Camofox 里打开 https://bbs.pinggu.org 并登录（保持会话有效）
 2. Agent 调用 `search-bbs-pinggu.py read <URL>` 时会自动：
-   - 检查 cookies 是否有效 → 有效则直接读帖
-   - 无效 → 启动 Camofox → 打开登录页 → 自动填凭据 → 登录 → 提取新 cookies → 写回文件 → 用新 cookies 读帖
-3. 全程自动，无需用户干预
+   - 检查 cookies 文件是否有效 → 有效则直接读帖
+   - 无效 → 从 Camofox profile 的 `cookies.sqlite` 提取 `Z9M6_79fc_auth` / `Z9M6_79fc_saltkey` → 写入文件 → 用新 cookies 读帖
+3. 全程自动，无需用户干预。**前提**：Camofox 里保持登录态（登录会话与文件 cookies 独立，Camofox 会话有效即可续期）
 
 **其他 Agent**：如果无法自动续期，Agent 应提示用户手动重新导出 cookies。
 
@@ -129,8 +125,7 @@ research-media-skill/
 ├── CLAUDE.md                      ← Claude Code 专用指引
 └── scripts/
     ├── camofox-manager.sh         ← Camofox 浏览器管理（Hermes 专用）
-    ├── search-bbs-pinggu.py       ← 帖子读取+自动 cookie 续期（通用）
-    └── refresh-bbs-cookies.py     ← cookie 续期脚本（被 search-bbs-pinggu.py 调用）
+    └── search-bbs-pinggu.py       ← 帖子读取 + 自动 cookie 续期（从 Camofox 会话提取）
 ```
 
 ---
