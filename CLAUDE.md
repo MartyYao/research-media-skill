@@ -30,6 +30,12 @@ Z9M6_79fc_saltkey=<从浏览器复制的值>
 ```
 
 ## 读取帖子
+推荐使用辅助脚本（自动处理 cookie 检查、续期、GBK 解码、内容提取）：
+```bash
+python3 scripts/search-bbs-pinggu.py read "https://bbs.pinggu.org/thread-XXXXXXX-1-1.html"
+```
+
+或手动 curl（需自行确保 cookies 有效）：
 ```bash
 curl -sL --max-time 20 \
   -A "Mozilla/5.0" \
@@ -46,4 +52,4 @@ curl -sL --max-time 20 \
 ## 禁止事项
 - 不得在无凭据时伪造结果
 - 不得在技能文件中写入凭据值
-- 不得假设 cookies 永久有效（过期后引导用户续期）
+- cookies 过期时：Hermes 场景下 `search-bbs-pinggu.py read` 会自动从 Camofox 会话续期；其他场景提示用户手动重新导出

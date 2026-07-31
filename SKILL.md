@@ -1,6 +1,6 @@
 ---
 name: research-media-skill
-version: 0.1.1
+version: 0.1.2
 description: 搜索经管之家(bbs.pinggu.org)等中文论坛获取实证实操方案。触发：Stata/计量/平行趋势/DID/回归问题。
 ---
 

@@ -14,6 +14,9 @@ import subprocess, shutil, sqlite3, tempfile
 
 COOKIE_FILE = os.path.expanduser('~/.hermes/credentials/bbs-pinggu-cookies.txt')
 AUTH_COOKIE_NAMES = ['Z9M6_79fc_auth', 'Z9M6_79fc_saltkey']
+# Test thread used for cookie validity check (a well-known thread).
+# If this thread is ever deleted, the check will fail and trigger refresh.
+TEST_URL = 'https://bbs.pinggu.org/thread-7909828-1-1.html'
 
 # ─── Cookie helpers ───────────────────────────────────────────
 
@@ -31,6 +34,7 @@ def read_cookies():
 
 def write_cookies(cookies_dict):
     """Write cookies dict to file."""
+    os.makedirs(os.path.dirname(COOKIE_FILE), exist_ok=True)
     with open(COOKIE_FILE, 'w') as f:
         f.write(f"# bbs.pinggu.org login cookies\n")
         f.write(f"# 最后更新: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -46,16 +50,17 @@ def cookies_valid():
     cookie_str = '; '.join(f'{k}={v}' for k, v in cookies.items())
     try:
         req = urllib.request.Request(
-            'https://bbs.pinggu.org/thread-7909828-1-1.html',
+            TEST_URL,
             headers={'User-Agent': 'Mozilla/5.0', 'Cookie': cookie_str}
         )
         with urllib.request.urlopen(req, timeout=15) as resp:
             raw = resp.read()
         html = raw.decode('gbk', errors='replace')
-        # Valid: page contains post content (postmessage_) and is large
-        # (login-wall page is only ~5KB; full thread is 100KB+)
+        # Valid: page contains post content (postmessage_) and is large.
+        # Use byte length of raw response (login-wall page is ~5KB;
+        # full thread is 100KB+). Decoded char count is unreliable for GBK.
         has_post = 'postmessage_' in html
-        is_large = len(html) > 50000
+        is_large = len(raw) > 100000
         return has_post and is_large
     except Exception:
         return False
@@ -69,7 +74,8 @@ def find_camofox_profile():
             ['ps', 'aux'], capture_output=True, text=True, timeout=10
         ).stdout
         for line in out.split('\n'):
-            if 'camoufox' in line and '-profile' in line:
+            low = line.lower()
+            if 'camoufox' in low and '-profile' in low:
                 m = re.search(r'-profile\s+(\S+)', line)
                 if m:
                     return m.group(1)
@@ -94,11 +100,17 @@ def extract_cookies_from_camofox():
         print(f"  ⏭️  cookies.sqlite not found at {db_path}")
         return None
 
-    # Copy DB to temp (browser holds a lock)
-    tmp = tempfile.mktemp(suffix='.sqlite')
+    # Copy DB + WAL + SHM to temp dir (Firefox uses WAL mode: freshly
+    # written cookies may still be in -wal, not checkpointed to main db)
+    tmpdir = tempfile.mkdtemp(prefix='bbs-cookies-')
     try:
-        shutil.copy2(db_path, tmp)
-        conn = sqlite3.connect(tmp)
+        for suffix in ['', '-wal', '-shm']:
+            src = db_path + suffix
+            if os.path.exists(src):
+                shutil.copy2(src, os.path.join(tmpdir, os.path.basename(src)))
+
+        tmp_db = os.path.join(tmpdir, 'cookies.sqlite')
+        conn = sqlite3.connect(tmp_db)
         cur = conn.cursor()
         placeholders = ','.join('?' for _ in AUTH_COOKIE_NAMES)
         cur.execute(
@@ -125,8 +137,7 @@ def extract_cookies_from_camofox():
         print(f"  ❌ Cookie extraction error: {e}")
         return None
     finally:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 # ─── Thread reader ────────────────────────────────────────────
 

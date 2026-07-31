@@ -28,7 +28,7 @@ Agent 首次使用本技能时，**必须主动引导用户完成凭据配置**�
 1. 登录 https://bbs.pinggu.org
 2. F12 → Application → Cookies → bbs.pinggu.org
 3. 找到 `Z9M6_79fc_auth` 和 `Z9M6_79fc_saltkey`，复制值
-4. 写入 `~/.hermes/credentials/bbs-pinggu-cookies.txt`
+4. 写入 `~/.hermes/credentials/bbs-pinggu-cookies.txt`，并设置权限 `chmod 600`
    ```
    Z9M6_79fc_auth=从浏览器复制的值
    Z9M6_79fc_saltkey=从浏览器复制的值
